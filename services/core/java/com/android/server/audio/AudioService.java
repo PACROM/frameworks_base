@@ -1500,10 +1500,13 @@ public class AudioService extends IAudioService.Stub
         }
         if (!TextUtils.isEmpty(packageName)) {
             PackageManager pm = mContext.getPackageManager();
+            ActivityManager am =
+                          (ActivityManager) mContext.getSystemService(mContext.ACTIVITY_SERVICE);
+
             if (pm.checkPermission(Manifest.permission.CAPTURE_AUDIO_HOTWORD, packageName)
                     == PackageManager.PERMISSION_GRANTED) {
                 try {
-                    assistantUid = pm.getPackageUid(packageName, 0);
+                    assistantUid = pm.getPackageUidAsUser(packageName, am.getCurrentUser());
                 } catch (PackageManager.NameNotFoundException e) {
                     Log.e(TAG,
                             "updateAssistantUId() could not find UID for package: " + packageName);
@@ -4492,6 +4495,27 @@ public class AudioService extends IAudioService.Stub
             throw new IllegalArgumentException("Illegal null device");
         }
         mDeviceBroker.postBluetoothA2dpDeviceConfigChange(device);
+    }
+
+    /**
+     * @see AudioManager#handleBluetoothA2dpActiveDeviceChange(BluetoothDevice, int, int,
+     *                                                        boolean, int)
+     */
+    public void handleBluetoothA2dpActiveDeviceChange(
+            BluetoothDevice device, int state, int profile, boolean suppressNoisyIntent,
+            int a2dpVolume) {
+        if (device == null) {
+                throw new IllegalArgumentException("Illegal null device");
+        }
+        if (profile != BluetoothProfile.A2DP && profile != BluetoothProfile.A2DP_SINK) {
+            throw new IllegalArgumentException("invalid profile " + profile);
+        }
+        if (state != BluetoothProfile.STATE_CONNECTED
+                && state != BluetoothProfile.STATE_DISCONNECTED) {
+            throw new IllegalArgumentException("Invalid state " + state);
+        }
+        mDeviceBroker.postBluetoothA2dpDeviceConfigChangeExt(device, state, profile,
+                suppressNoisyIntent, a2dpVolume);
     }
 
     private static final int DEVICE_MEDIA_UNMUTED_ON_PLUG =
